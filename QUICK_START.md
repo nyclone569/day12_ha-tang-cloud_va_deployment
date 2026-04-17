@@ -54,9 +54,7 @@ python app.py
 
 In another terminal:
 ```bash
-curl http://localhost:8000/ask -X POST \
-  -H "Content-Type: application/json" \
-  -d '{"question": "Hello"}'
+curl -X POST "http://localhost:8000/ask?question=Hello"
 ```
 
 **Expected:** You get a response! 🎉
@@ -66,10 +64,11 @@ curl http://localhost:8000/ask -X POST \
 ### Step 3: Docker Basics (5 minutes)
 
 ```bash
-cd ../../02-docker/develop
+# Go back to project root first
+cd /home/sirfenrir/Documents/day12_ha-tang-cloud_va_deployment
 
-# Build image
-docker build -t my-agent .
+# Build image (from project root)
+docker build -f 02-docker/develop/Dockerfile -t my-agent .
 
 # Run container
 docker run -p 8000:8000 my-agent
@@ -77,9 +76,7 @@ docker run -p 8000:8000 my-agent
 
 Test again:
 ```bash
-curl http://localhost:8000/ask -X POST \
-  -H "Content-Type: application/json" \
-  -d '{"question": "What is Docker?"}'
+curl -X POST "http://localhost:8000/ask?question=What%20is%20Docker"
 ```
 
 **Expected:** Same response, but now in a container! 🐳
@@ -132,18 +129,14 @@ python app.py
 
 Test without key (should fail):
 ```bash
-curl http://localhost:8000/ask -X POST \
-  -H "Content-Type: application/json" \
-  -d '{"question": "Hello"}'
+curl -X POST "http://localhost:8000/ask?question=Hello"
 # Expected: 401 Unauthorized
 ```
 
 Test with key (should work):
 ```bash
-curl http://localhost:8000/ask -X POST \
-  -H "X-API-Key: my-secret-key" \
-  -H "Content-Type: application/json" \
-  -d '{"question": "Hello"}'
+curl -X POST "http://localhost:8000/ask?question=Hello" \
+  -H "X-API-Key: my-secret-key"
 # Expected: 200 OK
 ```
 

@@ -1,49 +1,41 @@
-# ============================================================
-# Production Dockerfile — Multi-stage, < 500 MB, non-root
-# ============================================================
-
 # Stage 1: Builder
 FROM python:3.11-slim AS builder
 
-WORKDIR /build
+WORKDIR /app
 
-RUN apt-get update && apt-get install -y gcc libpq-dev \
-    && rm -rf /var/lib/apt/lists/*
-
+# Install dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir --user -r requirements.txt
-
-
+ 
 # Stage 2: Runtime
-FROM python:3.11-slim AS runtime
-
-# Non-root user
-RUN groupadd -r agent && useradd -r -g agent -d /app agent
+FROM python:3.11-slim
 
 WORKDIR /app
 
-# Copy packages từ builder
-COPY --from=builder /root/.local /home/agent/.local
+# Create non-root user
+RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
 
-# Copy application
+# Copy only installed packages from builder
+COPY --from=builder /root/.local /home/appuser/.local
+
+# Copy application code
 COPY app/ ./app/
-COPY utils/ ./utils/
 
-RUN chown -R agent:agent /app
+# Change ownership of app files
+RUN chown -R appuser:appuser /app
 
-USER agent
+# Switch to non-root user
+USER appuser
 
-ENV PATH=/home/agent/.local/bin:$PATH
-ENV PYTHONPATH=/app
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
+# Make sure scripts in .local are usable
+ENV PATH=/home/appuser/.local/bin:$PATH
 
+# Expose port
 EXPOSE 8000
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
-    CMD python -c \
-    "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" \
-    || exit 1
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]
+# Run application
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
